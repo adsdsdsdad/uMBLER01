@@ -1,3 +1,6 @@
+// ARQUIVO: app/api/webhook/umbler/route.ts
+// SUBSTITUA as seções marcadas abaixo:
+
 import { type NextRequest, NextResponse } from "next/server"
 import { DatabaseService } from "@/lib/database"
 
@@ -31,19 +34,77 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log("🔍 === DEBUG IDENTIFICAÇÃO SENDER ===")
-      console.log("📝 lastMessage.Source:", lastMessage.Source)
-      console.log("📝 lastMessage.Source (lowercase):", lastMessage.Source?.toLowerCase())
-      console.log("👤 chatData.Contact.Name:", chatData.Contact?.Name)
-      console.log("🎧 chatData.OrganizationMember.Name:", chatData.OrganizationMember?.Name)
-      console.log("🎧 lastMessage.Member.Name:", lastMessage.Member?.Name)
+      // ===== SUBSTITUA ESTA SEÇÃO INTEIRA =====
+      // COMEÇE A SUBSTITUIÇÃO AQUI ⬇️
+      console.log("🔍 === DEBUG DADOS COMPLETOS ===")
+      console.log("📝 lastMessage:", JSON.stringify(lastMessage, null, 2))
+      console.log("👤 chatData.Contact:", JSON.stringify(chatData.Contact, null, 2))
+      console.log("🎧 chatData.OrganizationMember:", JSON.stringify(chatData.OrganizationMember, null, 2))
+      console.log("🔍 Payload.Content:", JSON.stringify(Payload.Content, null, 2))
 
       const conversation_id = chatData.Id
       const customer_name = chatData.Contact?.Name || "Cliente"
       const customer_phone = chatData.Contact?.Phone || null
       const customer_email = chatData.Contact?.Email || null
 
-      const agent_name = chatData.OrganizationMember?.Name || lastMessage.Member?.Name || "Sistema"
+      // CORREÇÃO 1: Lógica mais robusta para sender_type
+      const sourceValue = (lastMessage.Source || "").toLowerCase().trim()
+      console.log("📊 Source original:", lastMessage.Source)
+      console.log("📊 Source processado:", sourceValue)
+      
+      let sender_type: "customer" | "agent"
+      
+      // Lógica melhorada para identificar o tipo de remetente
+      if (sourceValue === "contact" || sourceValue === "customer") {
+        sender_type = "customer"
+      } else if (sourceValue === "agent" || sourceValue === "member" || sourceValue === "organizationmember") {
+        sender_type = "agent"
+      } else {
+        // Fallback: verificar se há dados de membro/organização
+        const hasMemberData = lastMessage.Member?.Name || chatData.OrganizationMember?.Name
+        sender_type = hasMemberData ? "agent" : "customer"
+        console.log("⚠️ Fallback usado - sender_type:", sender_type, "hasMemberData:", !!hasMemberData)
+      }
+
+      console.log("📊 sender_type determinado:", sender_type)
+
+      // CORREÇÃO 2: Melhor captura do nome do agente
+      let agent_name = "Sistema"
+      let sender_name: string
+
+      if (sender_type === "agent") {
+        // Tentar múltiplas fontes com mais debug
+        const sources = {
+          memberName: lastMessage.Member?.Name,
+          memberDisplayName: lastMessage.Member?.DisplayName,
+          orgMemberName: chatData.OrganizationMember?.Name,
+          orgMemberDisplayName: chatData.OrganizationMember?.DisplayName,
+          payloadMemberName: Payload.Content?.OrganizationMember?.Name,
+        }
+
+        console.log("🎧 === FONTES DE NOME DO AGENTE ===")
+        Object.entries(sources).forEach(([key, value]) => {
+          console.log(`📝 ${key}:`, value)
+        })
+
+        // Prioridade na captura
+        agent_name = sources.memberName ||
+                    sources.memberDisplayName ||
+                    sources.orgMemberName ||
+                    sources.orgMemberDisplayName ||
+                    sources.payloadMemberName ||
+                    "Atendente"
+
+        sender_name = agent_name
+        console.log("✅ Nome do agente selecionado:", agent_name)
+      } else {
+        sender_name = customer_name
+        // Para conversas de cliente, manter o agente responsável
+        agent_name = chatData.OrganizationMember?.Name || 
+                    chatData.OrganizationMember?.DisplayName || 
+                    "Sistema"
+        console.log("👤 Mensagem de cliente, agente responsável:", agent_name)
+      }
 
       const message_text = lastMessage.Content || "🎵 Mensagem de áudio"
       const isSiteCustomer = message_text.toLowerCase().includes("olá, vim do site do marcelino")
@@ -51,7 +112,14 @@ export async function POST(request: NextRequest) {
       console.log("🌐 === DETECÇÃO CLIENTE SITE ===")
       console.log("📝 Mensagem:", message_text.substring(0, 100))
       console.log("🔍 É cliente do site?", isSiteCustomer ? "✅ SIM" : "❌ NÃO")
-      console.log("===============================")
+
+      console.log("✅ === RESULTADO FINAL ===")
+      console.log(`📊 sender_type: "${sender_type}"`)
+      console.log(`👤 sender_name: "${sender_name}"`)
+      console.log(`🎧 agent_name: "${agent_name}"`)
+      console.log(`🌐 is_site_customer: ${isSiteCustomer}`)
+      console.log("=====================================")
+      // TERMINE A SUBSTITUIÇÃO AQUI ⬆️
 
       // Criar ou atualizar conversa
       await DatabaseService.createOrUpdateConversation({
@@ -60,48 +128,12 @@ export async function POST(request: NextRequest) {
         customer_phone,
         customer_email,
         agent_name,
-        is_site_customer: isSiteCustomer, // Adicionar flag de cliente do site
+        is_site_customer: isSiteCustomer,
       })
 
       const message_id = lastMessage.Id || EventId
-
-      const sourceValue = lastMessage.Source?.toLowerCase()
-      const sender_type = sourceValue === "contact" ? "customer" : "agent"
-
-      let sender_name = sender_type === "customer" ? customer_name : agent_name
-
-      // Se for mensagem de agente, tentar pegar o nome específico do membro que enviou
-      if (sender_type === "agent") {
-        // Tentar múltiplas fontes para o nome do agente
-        const agentFromMessage = lastMessage.Member?.Name
-        const agentFromChat = chatData.OrganizationMember?.Name
-        const agentFromPayload = Payload.Content?.OrganizationMember?.Name
-
-        sender_name = agentFromMessage || agentFromChat || agentFromPayload || agent_name || "Atendente"
-
-        console.log("🎧 === DEBUG NOME ATENDENTE ===")
-        console.log("📝 lastMessage.Member?.Name:", agentFromMessage)
-        console.log("📝 chatData.OrganizationMember?.Name:", agentFromChat)
-        console.log("📝 Payload.Content?.OrganizationMember?.Name:", agentFromPayload)
-        console.log("📝 agent_name (fallback):", agent_name)
-        console.log("✅ sender_name final:", sender_name)
-        console.log("===============================")
-      } else {
-        // Para cliente, garantir que sempre tenha um nome
-        sender_name = customer_name || "Cliente"
-      }
-
       const message_type = lastMessage.IsPrivate ? "private_note" : "message"
       const timestamp = new Date(EventDate)
-
-      console.log("✅ === RESULTADO IDENTIFICAÇÃO ===")
-      console.log(`📊 Source original: "${lastMessage.Source}"`)
-      console.log(`📊 Source normalizado: "${sourceValue}"`)
-      console.log(`📊 sender_type: "${sender_type}"`)
-      console.log(`👤 sender_name: "${sender_name}"`)
-      console.log(`💬 message_text: "${message_text.substring(0, 50)}..."`)
-      console.log(`🌐 is_site_customer: ${isSiteCustomer}`)
-      console.log("=====================================")
 
       const savedMessage = await DatabaseService.createMessage({
         conversation_id,
@@ -115,13 +147,13 @@ export async function POST(request: NextRequest) {
 
       console.log("💾 Mensagem salva no banco:", savedMessage ? "✅ Sucesso" : "❌ Falhou")
 
+      // O resto do código permanece igual (cálculo de tempo de resposta)...
       if (sender_type === "agent" && !lastMessage.IsPrivate) {
         console.log("⏱️ === CALCULANDO TEMPO DE RESPOSTA ===")
         console.log(`📝 Mensagem do agente: ${sender_name}`)
         console.log(`📝 EventDate da resposta: ${EventDate}`)
         console.log(`📝 Conversa: ${conversation_id}`)
 
-        // Buscar a última mensagem do cliente nesta conversa
         const lastCustomerMessage = await DatabaseService.getLastCustomerMessage(conversation_id)
 
         if (lastCustomerMessage) {
@@ -136,7 +168,6 @@ export async function POST(request: NextRequest) {
           )
 
           if (responseTimeSeconds > 0) {
-            // Salvar tempo de resposta
             await DatabaseService.saveResponseTime({
               conversation_id,
               customer_message_id: lastCustomerMessage.message_id,
@@ -169,19 +200,18 @@ export async function POST(request: NextRequest) {
         conversation_id,
         sender_type,
         sender_name,
+        agent_name, // Adicionar agent_name na resposta
         is_site_customer: isSiteCustomer,
         event_id: EventId,
         processed_at: new Date().toISOString(),
       })
     }
 
+    // Resto do código permanece igual para outros tipos de evento...
     if (Type === "ChatClosed") {
       const conversation_id = Payload.Content.Id
-      // Atualizar status da conversa para fechada
       await DatabaseService.updateConversationStatus(conversation_id, "closed")
-
       console.log(`✅ Chat fechado - Conversa: ${conversation_id}`)
-
       return NextResponse.json({
         success: true,
         message: "Chat fechado processado",
@@ -194,12 +224,8 @@ export async function POST(request: NextRequest) {
     if (Type === "MemberTransfer") {
       const conversation_id = Payload.Content.Id
       const new_agent = Payload.Content.OrganizationMember?.Name || "Sistema"
-
-      // Atualizar agente responsável
       await DatabaseService.updateConversationAgent(conversation_id, new_agent)
-
       console.log(`✅ Transferência processada - Conversa: ${conversation_id}, Novo agente: ${new_agent}`)
-
       return NextResponse.json({
         success: true,
         message: "Transferência processada",
@@ -210,15 +236,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Outros tipos de evento (ChatSectorChanged, ChatPrivateStatusChanged)
     console.log(`ℹ️ Evento recebido mas não processado: ${Type}`)
-
     return NextResponse.json({
       success: true,
       message: `Evento ${Type} recebido mas não processado`,
       event_type: Type,
       event_id: EventId,
     })
+
   } catch (error) {
     console.error("❌ Erro ao processar webhook Umbler:", error)
     return NextResponse.json(
