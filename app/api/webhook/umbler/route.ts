@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
       const sourceValue = (lastMessage.Source || "").toLowerCase().trim()
       console.log("📊 Source original:", lastMessage.Source)
       console.log("📊 Source processado:", sourceValue)
-      
+
       let sender_type: "customer" | "agent"
-      
+
       // Lógica melhorada para identificar o tipo de remetente
       if (sourceValue === "contact" || sourceValue === "customer") {
         sender_type = "customer"
@@ -73,36 +73,97 @@ export async function POST(request: NextRequest) {
       let sender_name: string
 
       if (sender_type === "agent") {
-        // Tentar múltiplas fontes com mais debug
+        // Tentar TODAS as fontes possíveis
         const sources = {
+          // Fontes do lastMessage.Member
           memberName: lastMessage.Member?.Name,
           memberDisplayName: lastMessage.Member?.DisplayName,
+          memberFullName: lastMessage.Member?.FullName,
+          memberFirstName: lastMessage.Member?.FirstName,
+          memberLastName: lastMessage.Member?.LastName,
+          memberUsername: lastMessage.Member?.Username,
+          memberEmail: lastMessage.Member?.Email,
+
+          // Fontes do chatData.OrganizationMember
           orgMemberName: chatData.OrganizationMember?.Name,
           orgMemberDisplayName: chatData.OrganizationMember?.DisplayName,
+          orgMemberFullName: chatData.OrganizationMember?.FullName,
+          orgMemberFirstName: chatData.OrganizationMember?.FirstName,
+          orgMemberLastName: chatData.OrganizationMember?.LastName,
+          orgMemberUsername: chatData.OrganizationMember?.Username,
+          orgMemberEmail: chatData.OrganizationMember?.Email,
+
+          // Fontes do Payload.Content
           payloadMemberName: Payload.Content?.OrganizationMember?.Name,
+          payloadMemberDisplayName: Payload.Content?.OrganizationMember?.DisplayName,
+
+          // Fontes alternativas
+          lastMessageAuthor: lastMessage.Author,
+          lastMessageSender: lastMessage.Sender,
+          lastMessageFrom: lastMessage.From,
+          lastMessageUser: lastMessage.User,
+
+          // Fontes do chatData direto
+          chatDataAgent: chatData.Agent?.Name,
+          chatDataAssignedTo: chatData.AssignedTo?.Name,
+          chatDataOwner: chatData.Owner?.Name,
         }
 
-        console.log("🎧 === FONTES DE NOME DO AGENTE ===")
+        console.log("🎧 === TODAS AS FONTES DE NOME DO AGENTE ===")
         Object.entries(sources).forEach(([key, value]) => {
-          console.log(`📝 ${key}:`, value)
+          if (value) console.log(`✅ ${key}:`, value)
+          else console.log(`❌ ${key}: null/undefined`)
         })
 
-        // Prioridade na captura
-        agent_name = sources.memberName ||
-                    sources.memberDisplayName ||
-                    sources.orgMemberName ||
-                    sources.orgMemberDisplayName ||
-                    sources.payloadMemberName ||
-                    "Atendente"
+        agent_name =
+          sources.memberName ||
+          sources.memberDisplayName ||
+          sources.memberFullName ||
+          sources.orgMemberName ||
+          sources.orgMemberDisplayName ||
+          sources.orgMemberFullName ||
+          sources.payloadMemberName ||
+          sources.payloadMemberDisplayName ||
+          sources.lastMessageAuthor ||
+          sources.lastMessageSender ||
+          sources.lastMessageFrom ||
+          sources.lastMessageUser ||
+          sources.chatDataAgent ||
+          sources.chatDataAssignedTo ||
+          sources.chatDataOwner ||
+          sources.memberFirstName ||
+          sources.memberUsername ||
+          sources.orgMemberFirstName ||
+          sources.orgMemberUsername ||
+          "Atendente"
 
         sender_name = agent_name
         console.log("✅ Nome do agente selecionado:", agent_name)
+
+        if (agent_name === "Atendente" || agent_name === "Sistema") {
+          console.log("⚠️ Nome genérico detectado, tentando fontes alternativas...")
+
+          // Tentar extrair de qualquer campo que contenha nome
+          const allData = JSON.stringify(body)
+          const nameMatches = allData.match(/"Name":\s*"([^"]+)"/g)
+          const displayNameMatches = allData.match(/"DisplayName":\s*"([^"]+)"/g)
+
+          console.log("🔍 Nomes encontrados no JSON:", nameMatches)
+          console.log("🔍 DisplayNames encontrados no JSON:", displayNameMatches)
+
+          if (nameMatches && nameMatches.length > 0) {
+            const extractedName = nameMatches[0].match(/"([^"]+)"$/)?.[1]
+            if (extractedName && extractedName !== customer_name) {
+              agent_name = extractedName
+              sender_name = agent_name
+              console.log("🎯 Nome extraído do JSON:", agent_name)
+            }
+          }
+        }
       } else {
         sender_name = customer_name
         // Para conversas de cliente, manter o agente responsável
-        agent_name = chatData.OrganizationMember?.Name || 
-                    chatData.OrganizationMember?.DisplayName || 
-                    "Sistema"
+        agent_name = chatData.OrganizationMember?.Name || chatData.OrganizationMember?.DisplayName || "Sistema"
         console.log("👤 Mensagem de cliente, agente responsável:", agent_name)
       }
 
@@ -243,7 +304,6 @@ export async function POST(request: NextRequest) {
       event_type: Type,
       event_id: EventId,
     })
-
   } catch (error) {
     console.error("❌ Erro ao processar webhook Umbler:", error)
     return NextResponse.json(

@@ -335,4 +335,34 @@ export class DatabaseService {
     `
     return result
   }
+
+  static async getRecentMessages(limit = 5) {
+    const result = await sql`
+      SELECT 
+        m.*,
+        c.customer_name,
+        c.agent_name,
+        c.is_site_customer
+      FROM messages m
+      LEFT JOIN conversations c ON m.conversation_id = c.conversation_id
+      ORDER BY m.timestamp DESC
+      LIMIT ${limit}
+    `
+    return result
+  }
+
+  static async getSiteCustomersStats() {
+    const result = await sql`
+      SELECT 
+        COUNT(*) as total_site_customers,
+        COUNT(CASE WHEN status = 'closed' THEN 1 END) as closed_conversations,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_conversations,
+        AVG(rt.response_time_seconds) as avg_response_time,
+        COUNT(DISTINCT DATE(c.created_at)) as days_with_site_customers
+      FROM conversations c
+      LEFT JOIN response_times rt ON c.conversation_id = rt.conversation_id
+      WHERE c.is_site_customer = true
+    `
+    return result[0]
+  }
 }

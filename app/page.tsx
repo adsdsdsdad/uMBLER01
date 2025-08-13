@@ -4,6 +4,7 @@ import { MessageSquare, TrendingUp } from "lucide-react"
 import { MetricsOverview } from "@/components/metrics-overview"
 import { ConversationsList } from "@/components/conversations-list"
 import { AgentPerformance } from "@/components/agent-performance"
+import { SiteCustomersCard } from "@/components/site-customers-card"
 
 export default function DashboardPage() {
   return (
@@ -27,6 +28,11 @@ export default function DashboardPage() {
           <p className="max-w-2xl mx-auto" style={{ color: "#3E403F", opacity: 0.6 }}>
             Monitore tempos de resposta, performance dos atendentes e tags em tempo real
           </p>
+        </div>
+
+        {/* Card específico para clientes do site */}
+        <div className="mb-8">
+          <SiteCustomersCard />
         </div>
 
         {/* Métricas Gerais com design melhorado */}

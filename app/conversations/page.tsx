@@ -120,6 +120,9 @@ export default function AllConversationsPage() {
   const [selectedAgent, setSelectedAgent] = useState<string>("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedStatus, setSelectedStatus] = useState<string>("")
+  const [selectedResponseTime, setSelectedResponseTime] = useState<string>("")
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>("")
+  const [selectedDate, setSelectedDate] = useState<string>("")
   const [agents, setAgents] = useState<string[]>([])
 
   useEffect(() => {
@@ -183,8 +186,64 @@ export default function AllConversationsPage() {
       filtered = filtered.filter((conv) => conv.status === selectedStatus)
     }
 
+    // Filtro por tempo de resposta
+    if (selectedResponseTime) {
+      filtered = filtered.filter((conv) => {
+        const { category } = getResponseTimeCategory(conv.avg_response_time || 0)
+        return category === selectedResponseTime
+      })
+    }
+
+    // Filtro por período de tempo
+    if (selectedTimeRange) {
+      const now = new Date()
+      let startTime: Date
+
+      switch (selectedTimeRange) {
+        case "1h":
+          startTime = new Date(now.getTime() - 1 * 60 * 60 * 1000)
+          break
+        case "6h":
+          startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+          break
+        case "24h":
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          break
+        case "7d":
+          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case "30d":
+          startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          break
+        default:
+          startTime = new Date(0)
+      }
+
+      filtered = filtered.filter((conv) => new Date(conv.updated_at) >= startTime)
+    }
+
+    // Filtro por data específica
+    if (selectedDate) {
+      const selectedDateObj = new Date(selectedDate)
+      const nextDay = new Date(selectedDateObj.getTime() + 24 * 60 * 60 * 1000)
+
+      filtered = filtered.filter((conv) => {
+        const convDate = new Date(conv.updated_at)
+        return convDate >= selectedDateObj && convDate < nextDay
+      })
+    }
+
     setFilteredConversations(filtered)
-  }, [conversations, searchTerm, selectedAgent, selectedTags, selectedStatus])
+  }, [
+    conversations,
+    searchTerm,
+    selectedAgent,
+    selectedTags,
+    selectedStatus,
+    selectedResponseTime,
+    selectedTimeRange,
+    selectedDate,
+  ])
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
@@ -271,25 +330,27 @@ export default function AllConversationsPage() {
             </div>
           </div>
 
-          {agentStats && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: "#0BC4D9" }}
-                >
-                  <BarChart3 className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold" style={{ color: "#3E403F" }}>
-                    Performance: {selectedAgent}
-                  </h3>
-                  <p className="text-sm" style={{ color: "#3E403F", opacity: 0.7 }}>
-                    Estatísticas de tempo de resposta do atendente selecionado
-                  </p>
-                </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: "#0BC4D9" }}
+              >
+                <BarChart3 className="h-4 w-4 text-white" />
               </div>
+              <div>
+                <h3 className="text-lg font-semibold" style={{ color: "#3E403F" }}>
+                  Performance do Atendente
+                </h3>
+                <p className="text-sm" style={{ color: "#3E403F", opacity: 0.7 }}>
+                  {selectedAgent
+                    ? `Estatísticas de tempo de resposta: ${selectedAgent}`
+                    : "Selecione um atendente no filtro para ver as métricas"}
+                </p>
+              </div>
+            </div>
 
+            {selectedAgent && agentStats ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center p-4 rounded-lg" style={{ backgroundColor: "#F2F2F2" }}>
                   <div className="text-2xl font-bold mb-1" style={{ color: "#3E403F" }}>
@@ -321,12 +382,24 @@ export default function AllConversationsPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-8">
+                <div
+                  className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                  style={{ backgroundColor: "#F2F2F2" }}
+                >
+                  <User className="h-8 w-8" style={{ color: "#3E403F", opacity: 0.5 }} />
+                </div>
+                <p className="text-sm" style={{ color: "#3E403F", opacity: 0.7 }}>
+                  Selecione um atendente no filtro acima para visualizar suas métricas de performance
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Filtros Avançados */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
               {/* Busca */}
               <div className="space-y-2">
                 <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
@@ -373,6 +446,48 @@ export default function AllConversationsPage() {
                 </select>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
+                  Tempo de Resposta
+                </label>
+                <select
+                  value={selectedResponseTime}
+                  onChange={(e) => setSelectedResponseTime(e.target.value)}
+                  className="w-full px-4 py-2 border-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-0"
+                  style={{
+                    borderColor: selectedResponseTime ? "#04BFAD" : "#e5e7eb",
+                    color: "#3E403F",
+                  }}
+                >
+                  <option value="">Todos</option>
+                  <option value="Excelente">Excelente (0-10min)</option>
+                  <option value="Médio">Médio (10-15min)</option>
+                  <option value="Demorado">Demorado (15+min)</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
+                  Período
+                </label>
+                <select
+                  value={selectedTimeRange}
+                  onChange={(e) => setSelectedTimeRange(e.target.value)}
+                  className="w-full px-4 py-2 border-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-0"
+                  style={{
+                    borderColor: selectedTimeRange ? "#04BFAD" : "#e5e7eb",
+                    color: "#3E403F",
+                  }}
+                >
+                  <option value="">Todos</option>
+                  <option value="1h">Última hora</option>
+                  <option value="6h">Últimas 6 horas</option>
+                  <option value="24h">Últimas 24 horas</option>
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                </select>
+              </div>
+
               {/* Status */}
               <div className="space-y-2">
                 <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
@@ -391,6 +506,22 @@ export default function AllConversationsPage() {
                   <option value="active">Ativo</option>
                   <option value="closed">Fechado</option>
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
+                  Data Específica
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-4 py-2 border-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-0"
+                  style={{
+                    borderColor: selectedDate ? "#04BFAD" : "#e5e7eb",
+                    color: "#3E403F",
+                  }}
+                />
               </div>
 
               {/* Resultados */}
