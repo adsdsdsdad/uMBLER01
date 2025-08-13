@@ -5,10 +5,18 @@ import { useEffect, useState, useRef } from "react"
 interface RealtimeMetrics {
   conversation_id: string
   customer_name?: string
+  customer_phone?: string
+  customer_email?: string
   agent_name?: string
-  total_messages: number
-  avg_response_time: number
   status: string
+  is_site_customer?: boolean
+  total_messages: number
+  customer_messages: number
+  agent_messages: number
+  avg_response_time: number
+  min_response_time: number
+  max_response_time: number
+  created_at: string
   updated_at: string
 }
 
