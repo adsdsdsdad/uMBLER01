@@ -17,6 +17,7 @@ interface ConversationMetrics {
   status: string
   updated_at: string
   tags: string[]
+  is_site_customer?: boolean
 }
 
 const TEAM_AGENTS = [
@@ -120,15 +121,22 @@ export function ConversationsList() {
   useEffect(() => {
     async function fetchConversations() {
       try {
+        // Usando endpoints corretos que já existem
         const endpoint = onlySiteMessages ? "/api/conversations/site-customers" : "/api/conversations"
         const response = await fetch(endpoint)
-        const data = await response.json()
-        setConversations(data.slice(0, 20))
+        const conversationsData = await response.json()
 
-        const uniqueAgents = [
-          ...new Set([...data.map((conv: ConversationMetrics) => conv.agent_name).filter(Boolean), ...TEAM_AGENTS]),
-        ].sort()
-        setAgents(uniqueAgents)
+        if (Array.isArray(conversationsData)) {
+          setConversations(conversationsData.slice(0, 20))
+
+          const uniqueAgents = [
+            ...new Set([
+              ...conversationsData.map((conv: ConversationMetrics) => conv.agent_name).filter(Boolean),
+              ...TEAM_AGENTS,
+            ]),
+          ].sort()
+          setAgents(uniqueAgents)
+        }
       } catch (error) {
         console.error("Erro ao carregar conversas:", error)
       } finally {
