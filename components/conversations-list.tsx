@@ -127,7 +127,7 @@ export function ConversationsList() {
         const conversationsData = await response.json()
 
         if (Array.isArray(conversationsData)) {
-          setConversations(conversationsData.slice(0, 20))
+          setConversations(conversationsData)
 
           const uniqueAgents = [
             ...new Set([
@@ -168,6 +168,18 @@ export function ConversationsList() {
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }
+
+  const getResponseTimeCategory = (responseTimeSeconds: number) => {
+    const minutes = responseTimeSeconds / 60
+
+    if (minutes <= 10) {
+      return { category: "Excelente", color: "#04BFAD" }
+    } else if (minutes <= 15) {
+      return { category: "Médio", color: "#FF8C00" } // Laranja
+    } else {
+      return { category: "Demorado", color: "#FF4444" } // Vermelho
+    }
   }
 
   if (loading) {
@@ -283,6 +295,19 @@ export function ConversationsList() {
                   Clientes do Site
                 </span>
               )}
+              {conversations.length > 20 && (
+                <Button
+                  asChild
+                  size="sm"
+                  className="ml-3 text-white hover:shadow-md transition-all"
+                  style={{ backgroundColor: "#06BFBF" }}
+                >
+                  <Link href="/conversations">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Ver Todas ({conversations.length})
+                  </Link>
+                </Button>
+              )}
             </div>
             {(selectedAgent ||
               selectedTags.length !== 1 ||
@@ -326,7 +351,7 @@ export function ConversationsList() {
         </div>
       ) : (
         <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {filteredConversations.map((conversation) => (
+          {filteredConversations.slice(0, 20).map((conversation) => (
             <div
               key={conversation.conversation_id}
               className="border border-gray-200 rounded-lg p-3 bg-white hover:shadow-md transition-all duration-200"
@@ -398,23 +423,10 @@ export function ConversationsList() {
                   <span
                     className="px-2 py-1 rounded-lg text-xs font-medium text-white"
                     style={{
-                      backgroundColor:
-                        conversation.avg_response_time <= 30
-                          ? "#04BFAD"
-                          : conversation.avg_response_time <= 120
-                            ? "#06BFBF"
-                            : conversation.avg_response_time <= 300
-                              ? "#0BC4D9"
-                              : "#3E403F",
+                      backgroundColor: getResponseTimeCategory(conversation.avg_response_time || 0).color,
                     }}
                   >
-                    {conversation.avg_response_time <= 30
-                      ? "Excelente"
-                      : conversation.avg_response_time <= 120
-                        ? "Bom"
-                        : conversation.avg_response_time <= 300
-                          ? "Regular"
-                          : "Lento"}
+                    {getResponseTimeCategory(conversation.avg_response_time || 0).category}
                   </span>
                 </div>
                 <Button
