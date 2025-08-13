@@ -20,7 +20,7 @@
 
 Crie um arquivo `.env.local` com:
 
-```env
+\`\`\`env
 # Banco de Dados
 DATABASE_URL=postgresql://usuario:senha@host:porta/banco
 
@@ -33,7 +33,7 @@ NEXT_PUBLIC_APP_VERSION="1.0.0"
 
 # Configurações de Log
 LOG_LEVEL=info
-```
+\`\`\`
 
 ### 3. Configuração da Umbler
 
@@ -46,12 +46,12 @@ LOG_LEVEL=info
 ### Opção A: Vercel (Recomendado)
 
 1. **Conectar ao GitHub**
-   ```bash
+   \`\`\`bash
    # Faça push do código para o GitHub
    git add .
    git commit -m "Preparando para produção"
    git push origin main
-   ```
+   \`\`\`
 
 2. **Deploy no Vercel**
    - Acesse [vercel.com](https://vercel.com)
@@ -70,10 +70,10 @@ LOG_LEVEL=info
    - Conecte seu repositório
 
 2. **Configurar Build**
-   ```bash
+   \`\`\`bash
    Build command: npm run build
    Publish directory: .next
-   ```
+   \`\`\`
 
 3. **Variáveis de Ambiente**
    - Configure no painel do Netlify
@@ -81,10 +81,10 @@ LOG_LEVEL=info
 ### Opção C: AWS/Outros
 
 1. **Build da Aplicação**
-   ```bash
+   \`\`\`bash
    npm run build
    npm run start
-   ```
+   \`\`\`
 
 2. **Configurar Proxy Reverso**
    - Nginx ou Apache
@@ -95,7 +95,7 @@ LOG_LEVEL=info
 
 ### 1. Otimizações de Performance
 
-```javascript
+\`\`\`javascript
 // next.config.mjs
 const nextConfig = {
   compress: true,
@@ -103,7 +103,7 @@ const nextConfig = {
   generateEtags: false,
   // Headers de segurança já configurados
 }
-```
+\`\`\`
 
 ### 2. Monitoramento
 
@@ -174,13 +174,13 @@ const nextConfig = {
 
 ### 2. Backup e Restore
 
-```bash
+\`\`\`bash
 # Backup
 pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
 
 # Restore
 psql $DATABASE_URL < backup_20241201.sql
-```
+\`\`\`
 
 ### 3. Troubleshooting
 

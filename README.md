@@ -47,12 +47,12 @@ Sistema completo de atendimento ao cliente com integração em tempo real, métr
 ## 🔧 Configuração
 
 ### Variáveis de Ambiente
-```env
+\`\`\`env
 DATABASE_URL=sua_url_do_neon_postgresql
-```
+\`\`\`
 
 ### Instalação
-```bash
+\`\`\`bash
 # Instalar dependências
 pnpm install
 
@@ -61,7 +61,7 @@ pnpm dev
 
 # Build para produção
 pnpm build
-```
+\`\`\`
 
 ## 📱 Uso
 
