@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // ===== SUBSTITUA ESTA SEÇÃO INTEIRA =====
-      // COMEÇE A SUBSTITUIÇÃO AQUI ⬇️
       console.log("🔍 === DEBUG DADOS COMPLETOS ===")
       console.log("📝 lastMessage:", JSON.stringify(lastMessage, null, 2))
       console.log("👤 chatData.Contact:", JSON.stringify(chatData.Contact, null, 2))
@@ -47,20 +45,20 @@ export async function POST(request: NextRequest) {
       const customer_phone = chatData.Contact?.Phone || null
       const customer_email = chatData.Contact?.Email || null
 
-      // CORREÇÃO 1: Lógica mais robusta para sender_type
+      // Lógica simples e robusta para identificar o tipo de remetente
       const sourceValue = (lastMessage.Source || "").toLowerCase().trim()
       console.log("📊 Source original:", lastMessage.Source)
       console.log("📊 Source processado:", sourceValue)
 
       let sender_type: "customer" | "agent"
 
-      // Lógica melhorada para identificar o tipo de remetente
+      // Identificação baseada no Source
       if (sourceValue === "contact" || sourceValue === "customer") {
         sender_type = "customer"
       } else if (sourceValue === "agent" || sourceValue === "member" || sourceValue === "organizationmember") {
         sender_type = "agent"
       } else {
-        // Fallback: verificar se há dados de membro/organização
+        // Fallback: se não tem Source, verificar se há dados de membro
         const hasMemberData = lastMessage.Member?.Name || chatData.OrganizationMember?.Name
         sender_type = hasMemberData ? "agent" : "customer"
         console.log("⚠️ Fallback usado - sender_type:", sender_type, "hasMemberData:", !!hasMemberData)
@@ -68,103 +66,46 @@ export async function POST(request: NextRequest) {
 
       console.log("📊 sender_type determinado:", sender_type)
 
-      // CORREÇÃO 2: Melhor captura do nome do agente
+      // Captura simples e direta do nome do agente
       let agent_name = "Sistema"
       let sender_name: string
 
       if (sender_type === "agent") {
-        // Tentar TODAS as fontes possíveis
-        const sources = {
-          // Fontes do lastMessage.Member
-          memberName: lastMessage.Member?.Name,
-          memberDisplayName: lastMessage.Member?.DisplayName,
-          memberFullName: lastMessage.Member?.FullName,
-          memberFirstName: lastMessage.Member?.FirstName,
-          memberLastName: lastMessage.Member?.LastName,
-          memberUsername: lastMessage.Member?.Username,
-          memberEmail: lastMessage.Member?.Email,
-
-          // Fontes do chatData.OrganizationMember
-          orgMemberName: chatData.OrganizationMember?.Name,
-          orgMemberDisplayName: chatData.OrganizationMember?.DisplayName,
-          orgMemberFullName: chatData.OrganizationMember?.FullName,
-          orgMemberFirstName: chatData.OrganizationMember?.FirstName,
-          orgMemberLastName: chatData.OrganizationMember?.LastName,
-          orgMemberUsername: chatData.OrganizationMember?.Username,
-          orgMemberEmail: chatData.OrganizationMember?.Email,
-
-          // Fontes do Payload.Content
-          payloadMemberName: Payload.Content?.OrganizationMember?.Name,
-          payloadMemberDisplayName: Payload.Content?.OrganizationMember?.DisplayName,
-
-          // Fontes alternativas
-          lastMessageAuthor: lastMessage.Author,
-          lastMessageSender: lastMessage.Sender,
-          lastMessageFrom: lastMessage.From,
-          lastMessageUser: lastMessage.User,
-
-          // Fontes do chatData direto
-          chatDataAgent: chatData.Agent?.Name,
-          chatDataAssignedTo: chatData.AssignedTo?.Name,
-          chatDataOwner: chatData.Owner?.Name,
-        }
-
-        console.log("🎧 === TODAS AS FONTES DE NOME DO AGENTE ===")
-        Object.entries(sources).forEach(([key, value]) => {
-          if (value) console.log(`✅ ${key}:`, value)
-          else console.log(`❌ ${key}: null/undefined`)
-        })
-
-        agent_name =
-          sources.memberName ||
-          sources.memberDisplayName ||
-          sources.memberFullName ||
-          sources.orgMemberName ||
-          sources.orgMemberDisplayName ||
-          sources.orgMemberFullName ||
-          sources.payloadMemberName ||
-          sources.payloadMemberDisplayName ||
-          sources.lastMessageAuthor ||
-          sources.lastMessageSender ||
-          sources.lastMessageFrom ||
-          sources.lastMessageUser ||
-          sources.chatDataAgent ||
-          sources.chatDataAssignedTo ||
-          sources.chatDataOwner ||
-          sources.memberFirstName ||
-          sources.memberUsername ||
-          sources.orgMemberFirstName ||
-          sources.orgMemberUsername ||
+        // Para mensagens de agente, usar o nome de quem está enviando
+        agent_name = 
+          lastMessage.Member?.Name ||
+          lastMessage.Member?.DisplayName ||
+          lastMessage.Member?.FullName ||
+          lastMessage.Member?.FirstName ||
+          lastMessage.Member?.Username ||
+          lastMessage.Member?.Email ||
           "Atendente"
-
+        
         sender_name = agent_name
-        console.log("✅ Nome do agente selecionado:", agent_name)
-
-        if (agent_name === "Atendente" || agent_name === "Sistema") {
-          console.log("⚠️ Nome genérico detectado, tentando fontes alternativas...")
-
-          // Tentar extrair de qualquer campo que contenha nome
-          const allData = JSON.stringify(body)
-          const nameMatches = allData.match(/"Name":\s*"([^"]+)"/g)
-          const displayNameMatches = allData.match(/"DisplayName":\s*"([^"]+)"/g)
-
-          console.log("🔍 Nomes encontrados no JSON:", nameMatches)
-          console.log("🔍 DisplayNames encontrados no JSON:", displayNameMatches)
-
-          if (nameMatches && nameMatches.length > 0) {
-            const extractedName = nameMatches[0].match(/"([^"]+)"$/)?.[1]
-            if (extractedName && extractedName !== customer_name) {
-              agent_name = extractedName
-              sender_name = agent_name
-              console.log("🎯 Nome extraído do JSON:", agent_name)
-            }
-          }
-        }
+        
+        console.log("🎧 === NOME DO AGENTE QUE ENVIOU ===")
+        console.log("lastMessage.Member?.Name:", lastMessage.Member?.Name)
+        console.log("lastMessage.Member?.DisplayName:", lastMessage.Member?.DisplayName)
+        console.log("Nome capturado:", agent_name)
+        console.log("=====================================")
       } else {
+        // Para mensagens de cliente, manter o agente responsável pela conversa
+        agent_name = 
+          chatData.OrganizationMember?.Name ||
+          chatData.OrganizationMember?.DisplayName ||
+          chatData.OrganizationMember?.FullName ||
+          chatData.OrganizationMember?.FirstName ||
+          chatData.OrganizationMember?.Username ||
+          chatData.OrganizationMember?.Email ||
+          "Sistema"
+        
         sender_name = customer_name
-        // Para conversas de cliente, manter o agente responsável
-        agent_name = chatData.OrganizationMember?.Name || chatData.OrganizationMember?.DisplayName || "Sistema"
-        console.log("👤 Mensagem de cliente, agente responsável:", agent_name)
+        
+        console.log("👤 === AGENTE RESPONSÁVEL PELA CONVERSA ===")
+        console.log("chatData.OrganizationMember?.Name:", chatData.OrganizationMember?.Name)
+        console.log("chatData.OrganizationMember?.DisplayName:", chatData.OrganizationMember?.DisplayName)
+        console.log("Agente responsável:", agent_name)
+        console.log("=====================================")
       }
 
       const message_text = lastMessage.Content || "🎵 Mensagem de áudio"
@@ -180,7 +121,6 @@ export async function POST(request: NextRequest) {
       console.log(`🎧 agent_name: "${agent_name}"`)
       console.log(`🌐 is_site_customer: ${isSiteCustomer}`)
       console.log("=====================================")
-      // TERMINE A SUBSTITUIÇÃO AQUI ⬆️
 
       // Criar ou atualizar conversa
       await DatabaseService.createOrUpdateConversation({
@@ -208,7 +148,7 @@ export async function POST(request: NextRequest) {
 
       console.log("💾 Mensagem salva no banco:", savedMessage ? "✅ Sucesso" : "❌ Falhou")
 
-      // O resto do código permanece igual (cálculo de tempo de resposta)...
+      // Cálculo de tempo de resposta
       if (sender_type === "agent" && !lastMessage.IsPrivate) {
         console.log("⏱️ === CALCULANDO TEMPO DE RESPOSTA ===")
         console.log(`📝 Mensagem do agente: ${sender_name}`)
@@ -261,14 +201,14 @@ export async function POST(request: NextRequest) {
         conversation_id,
         sender_type,
         sender_name,
-        agent_name, // Adicionar agent_name na resposta
+        agent_name,
         is_site_customer: isSiteCustomer,
         event_id: EventId,
         processed_at: new Date().toISOString(),
       })
     }
 
-    // Resto do código permanece igual para outros tipos de evento...
+    // Processar outros tipos de evento
     if (Type === "ChatClosed") {
       const conversation_id = Payload.Content.Id
       await DatabaseService.updateConversationStatus(conversation_id, "closed")
