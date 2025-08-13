@@ -100,10 +100,31 @@ export async function POST(request: NextRequest) {
       } else {
         sender_name = customer_name
         // Para conversas de cliente, manter o agente responsável
-        agent_name = chatData.OrganizationMember?.Name || 
-                    chatData.OrganizationMember?.DisplayName || 
-                    "Sistema"
+        // CORREÇÃO: Sempre tentar definir um agente válido
+        const possibleAgentNames = [
+          chatData.OrganizationMember?.Name,
+          chatData.OrganizationMember?.DisplayName,
+          Payload.Content?.OrganizationMember?.Name,
+          Payload.Content?.OrganizationMember?.DisplayName,
+          "Atendente"
+        ]
+        
+        agent_name = possibleAgentNames.find(name => name && name.trim() !== "") || "Atendente"
+        
+        // GARANTIR que agent_name nunca seja undefined/null
+        if (!agent_name || agent_name.trim() === "") {
+          agent_name = "Atendente"
+          console.log("⚠️ agent_name estava vazio, definindo como 'Atendente'")
+        }
+        
+        // NUNCA usar "Sistema" como nome de agente
+        if (agent_name === "Sistema") {
+          agent_name = "Atendente"
+          console.log("⚠️ agent_name era 'Sistema', alterando para 'Atendente'")
+        }
+        
         console.log("👤 Mensagem de cliente, agente responsável:", agent_name)
+        console.log("🔍 Possíveis nomes de agente:", possibleAgentNames.filter(Boolean))
       }
 
       const message_text = lastMessage.Content || "🎵 Mensagem de áudio"
@@ -122,7 +143,22 @@ export async function POST(request: NextRequest) {
       // TERMINE A SUBSTITUIÇÃO AQUI ⬆️
 
       // Criar ou atualizar conversa
-      await DatabaseService.createOrUpdateConversation({
+      console.log("💾 === ANTES DE SALVAR NO BANCO ===")
+      console.log("📝 Dados que serão enviados:", {
+        conversation_id,
+        customer_name,
+        customer_phone,
+        customer_email,
+        agent_name,
+        is_site_customer: isSiteCustomer
+      })
+      console.log("📝 Tipo do agent_name:", typeof agent_name)
+      console.log("📝 agent_name é null?", agent_name === null)
+      console.log("📝 agent_name é undefined?", agent_name === undefined)
+      console.log("📝 agent_name é string vazia?", agent_name === "")
+      console.log("=====================================")
+      
+      const savedConversation = await DatabaseService.createOrUpdateConversation({
         conversation_id,
         customer_name,
         customer_phone,
@@ -130,6 +166,23 @@ export async function POST(request: NextRequest) {
         agent_name,
         is_site_customer: isSiteCustomer,
       })
+      
+      console.log("💾 === CONVERSA SALVA/ATUALIZADA ===")
+      console.log("📝 Dados enviados:", {
+        conversation_id,
+        customer_name,
+        customer_phone,
+        customer_email,
+        agent_name,
+        is_site_customer: isSiteCustomer
+      })
+      console.log("📝 Resultado do banco:", {
+        conversation_id: savedConversation?.conversation_id,
+        customer_name: savedConversation?.customer_name,
+        agent_name: savedConversation?.agent_name,
+        status: savedConversation?.status
+      })
+      console.log("=====================================")
 
       const message_id = lastMessage.Id || EventId
       const message_type = lastMessage.IsPrivate ? "private_note" : "message"

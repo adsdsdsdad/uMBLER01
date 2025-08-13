@@ -11,6 +11,17 @@ import { RealtimeIndicator } from "./realtime-indicator"
 export function RealtimeConversationsList() {
   const { metrics: conversations, isConnected, lastUpdate, error } = useRealtimeMetrics()
 
+  // Debug: verificar os dados recebidos
+  console.log("🔍 RealtimeConversationsList - Dados recebidos:", {
+    total: conversations.length,
+    conversations: conversations.slice(0, 2).map(c => ({
+      conversation_id: c.conversation_id,
+      customer_name: c.customer_name,
+      agent_name: c.agent_name,
+      status: c.status
+    }))
+  })
+
   if (conversations.length === 0 && isConnected) {
     return (
       <div className="space-y-4">
@@ -52,7 +63,24 @@ export function RealtimeConversationsList() {
                     />
                   )}
                 </h4>
-                <p className="text-xs text-gray-500">Agente: {conversation.agent_name || "Não atribuído"}</p>
+                <p className="text-xs text-gray-500">
+                  Agente: {(() => {
+                    const agentName = conversation.agent_name
+                    const displayName = agentName || "Não atribuído"
+                    
+                    console.log(`🔍 Exibindo agente para ${conversation.conversation_id}:`, {
+                      agent_name: agentName,
+                      display_name: displayName,
+                      type: typeof agentName,
+                      isNull: agentName === null,
+                      isUndefined: agentName === undefined,
+                      isEmpty: agentName === "",
+                      isSystem: agentName === "Sistema"
+                    })
+                    
+                    return displayName
+                  })()}
+                </p>
               </div>
               <Badge variant={conversation.status === "active" ? "default" : "secondary"}>{conversation.status}</Badge>
             </div>
