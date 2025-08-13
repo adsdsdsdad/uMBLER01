@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatResponseTime, getResponseTimeBadgeColor } from "@/lib/utils"
+import { formatResponseTime, getResponseTimeBadgeColor, getResponseTimeCategory, formatDate } from "@/lib/utils"
 import { Eye, Clock, MessageSquare, Activity } from "lucide-react"
 import Link from "next/link"
 import { useRealtimeMetrics } from "@/hooks/use-realtime-metrics"
@@ -10,17 +10,6 @@ import { RealtimeIndicator } from "./realtime-indicator"
 
 export function RealtimeConversationsList() {
   const { metrics: conversations, isConnected, lastUpdate, error } = useRealtimeMetrics()
-
-  // Debug: verificar os dados recebidos
-  console.log("🔍 RealtimeConversationsList - Dados recebidos:", {
-    total: conversations.length,
-    conversations: conversations.slice(0, 2).map(c => ({
-      conversation_id: c.conversation_id,
-      customer_name: c.customer_name,
-      agent_name: c.agent_name,
-      status: c.status
-    }))
-  })
 
   if (conversations.length === 0 && isConnected) {
     return (
@@ -64,22 +53,7 @@ export function RealtimeConversationsList() {
                   )}
                 </h4>
                 <p className="text-xs text-gray-500">
-                  Agente: {(() => {
-                    const agentName = conversation.agent_name
-                    const displayName = agentName || "Não atribuído"
-                    
-                    console.log(`🔍 Exibindo agente para ${conversation.conversation_id}:`, {
-                      agent_name: agentName,
-                      display_name: displayName,
-                      type: typeof agentName,
-                      isNull: agentName === null,
-                      isUndefined: agentName === undefined,
-                      isEmpty: agentName === "",
-                      isSystem: agentName === "Sistema"
-                    })
-                    
-                    return displayName
-                  })()}
+                  Agente: {conversation.agent_name || "Não atribuído"}
                 </p>
               </div>
               <Badge variant={conversation.status === "active" ? "default" : "secondary"}>{conversation.status}</Badge>
@@ -87,7 +61,7 @@ export function RealtimeConversationsList() {
 
             <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
               <span>{conversation.total_messages} mensagens</span>
-              <span>Atualizado: {new Date(conversation.updated_at).toLocaleString("pt-BR")}</span>
+              <span>Atualizado: {formatDate(conversation.updated_at)}</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -97,13 +71,7 @@ export function RealtimeConversationsList() {
                   Tempo médio: {formatResponseTime(Math.round(conversation.avg_response_time || 0))}
                 </span>
                 <Badge className={getResponseTimeBadgeColor(conversation.avg_response_time || 0)} variant="secondary">
-                  {conversation.avg_response_time <= 30
-                    ? "Rápido"
-                    : conversation.avg_response_time <= 120
-                      ? "Normal"
-                      : conversation.avg_response_time <= 300
-                        ? "Lento"
-                        : "Muito Lento"}
+                  {getResponseTimeCategory(conversation.avg_response_time || 0)}
                 </Badge>
               </div>
               <Button asChild size="sm" variant="outline">

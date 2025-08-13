@@ -1,30 +1,119 @@
-# Umbler Webhook System
+# Sistema de Atendimento em Tempo Real
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+Sistema completo de atendimento ao cliente com integração em tempo real, métricas de performance e dashboard de monitoramento.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/adsdsdsdads-projects/v0-umbler-webhook-system)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/O0559zVauBQ)
+## 🚀 Funcionalidades
 
-## Overview
+- **Atendimento em Tempo Real**: Monitoramento instantâneo de conversas ativas
+- **Integração com Umbler**: Webhook para receber mensagens e eventos de chat
+- **Métricas de Performance**: Tempo de resposta, volume de mensagens e estatísticas por agente
+- **Dashboard Inteligente**: Interface moderna para acompanhamento de atendimentos
+- **Sistema de Agentes**: Atribuição e transferência de conversas entre atendentes
+- **Histórico Completo**: Armazenamento de todas as conversas e mensagens
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## 🏗️ Arquitetura
 
-## Deployment
+- **Frontend**: Next.js 14 com TypeScript e Tailwind CSS
+- **Backend**: API Routes do Next.js com integração direta ao banco
+- **Banco de Dados**: PostgreSQL com Neon (serverless)
+- **Integração**: Webhook para receber eventos da plataforma Umbler
+- **Tempo Real**: Polling automático para atualizações em tempo real
 
-Your project is live at:
+## 📊 Principais Componentes
 
-**[https://vercel.com/adsdsdsdads-projects/v0-umbler-webhook-system](https://vercel.com/adsdsdsdads-projects/v0-umbler-webhook-system)**
+### 1. Webhook Umbler (`/api/webhook/umbler`)
+- Recebe eventos de mensagens, fechamento de chat e transferências
+- Processa automaticamente o tipo de remetente (cliente/agente)
+- Calcula tempos de resposta em tempo real
+- Atualiza status das conversas automaticamente
 
-## Build your app
+### 2. Dashboard de Métricas (`/conversations`)
+- Visão geral de todas as conversas
+- Filtros por agente, status e tags
+- Estatísticas de performance por atendente
+- Análise de tempo de resposta
 
-Continue building your app on:
+### 3. Lista em Tempo Real (`/`)
+- Monitoramento instantâneo de conversas ativas
+- Indicador de conectividade em tempo real
+- Atualizações automáticas a cada 10 segundos
+- Visualização rápida do status dos atendimentos
 
-**[https://v0.app/chat/projects/O0559zVauBQ](https://v0.app/chat/projects/O0559zVauBQ)**
+### 4. Sistema de Banco de Dados
+- **conversations**: Dados das conversas e atribuições
+- **messages**: Histórico completo de mensagens
+- **response_times**: Métricas de tempo de resposta
 
-## How It Works
+## 🔧 Configuração
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+### Variáveis de Ambiente
+```env
+DATABASE_URL=sua_url_do_neon_postgresql
+```
+
+### Instalação
+```bash
+# Instalar dependências
+pnpm install
+
+# Executar em desenvolvimento
+pnpm dev
+
+# Build para produção
+pnpm build
+```
+
+## 📱 Uso
+
+### Para Clientes
+1. Acesse o dashboard principal em `/`
+2. Visualize conversas ativas em tempo real
+3. Monitore métricas de performance
+
+### Para Desenvolvedores
+1. Configure o webhook da Umbler para `/api/webhook/umbler`
+2. Ajuste as variáveis de ambiente
+3. Execute as migrações do banco de dados
+
+## 🎯 Recursos Técnicos
+
+- **TypeScript**: Tipagem completa para maior segurança
+- **Responsivo**: Interface adaptável para todos os dispositivos
+- **Performance**: Otimizações para carregamento rápido
+- **Escalável**: Arquitetura preparada para crescimento
+- **Monitoramento**: Logs detalhados para debugging
+
+## 🔄 Fluxo de Dados
+
+1. **Cliente envia mensagem** → Umbler processa
+2. **Webhook recebe evento** → Sistema identifica tipo
+3. **Dados são salvos** → Conversa e mensagem registradas
+4. **Métricas calculadas** → Tempo de resposta atualizado
+5. **Dashboard atualiza** → Interface reflete mudanças
+6. **Agente responde** → Ciclo se repete
+
+## 📈 Métricas Disponíveis
+
+- Total de conversas por agente
+- Tempo médio de resposta
+- Volume de mensagens
+- Status das conversas
+- Performance por período
+
+## 🚀 Deploy
+
+O sistema está preparado para deploy em:
+- Vercel
+- Netlify
+- AWS
+- Qualquer plataforma que suporte Next.js
+
+## 📞 Suporte
+
+Para dúvidas técnicas ou suporte, consulte a documentação da API ou entre em contato com a equipe de desenvolvimento.
+
+---
+
+**Versão**: 1.0.0  
+**Última Atualização**: Dezembro 2024  
+**Status**: Produção

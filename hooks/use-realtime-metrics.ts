@@ -1,24 +1,8 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-
-interface RealtimeMetrics {
-  conversation_id: string
-  customer_name?: string
-  customer_phone?: string
-  customer_email?: string
-  agent_name?: string
-  status: string
-  is_site_customer?: boolean
-  total_messages: number
-  customer_messages: number
-  agent_messages: number
-  avg_response_time: number
-  min_response_time: number
-  max_response_time: number
-  created_at: string
-  updated_at: string
-}
+import { config } from "@/lib/config"
+import type { RealtimeMetrics } from "@/lib/types"
 
 interface UseRealtimeMetricsReturn {
   metrics: RealtimeMetrics[]
@@ -41,7 +25,6 @@ export function useRealtimeMetrics(): UseRealtimeMetricsReturn {
       if (!isActiveRef.current) return
 
       try {
-        console.log("Buscando métricas...")
         const response = await fetch("/api/events")
 
         if (!response.ok) {
@@ -55,11 +38,6 @@ export function useRealtimeMetrics(): UseRealtimeMetricsReturn {
           setLastUpdate(new Date(data.timestamp))
           setIsConnected(true)
           setError(null)
-          console.log(`Métricas atualizadas: ${data.count} conversas`)
-
-          if (data.note) {
-            console.log("Nota:", data.note)
-          }
         } else {
           throw new Error("Resposta inválida do servidor")
         }
@@ -73,8 +51,8 @@ export function useRealtimeMetrics(): UseRealtimeMetricsReturn {
     // Buscar métricas imediatamente
     fetchMetrics()
 
-    // Configurar polling a cada 10 segundos
-    intervalRef.current = setInterval(fetchMetrics, 10000)
+    // Configurar polling usando configuração centralizada
+    intervalRef.current = setInterval(fetchMetrics, config.realtime.updateInterval)
 
     return () => {
       isActiveRef.current = false
