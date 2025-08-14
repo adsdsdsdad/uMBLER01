@@ -283,6 +283,33 @@ export class DatabaseService {
     return totalCalculated
   }
 
+  static async recalculateAllMetrics() {
+    console.log("🔄 Recalculando todas as métricas...")
+
+    // Buscar todas as conversas
+    const conversations = await sql`SELECT DISTINCT conversation_id FROM conversations`
+
+    let totalProcessed = 0
+
+    for (const conv of conversations) {
+      try {
+        const metrics = await this.getConversationMetrics(conv.conversation_id)
+        console.log(`✅ Métricas recalculadas para conversa ${conv.conversation_id}:`, {
+          total_messages: metrics.total_messages,
+          customer_messages: metrics.customer_messages,
+          agent_messages: metrics.agent_messages,
+          response_times_count: metrics.response_times_count
+        })
+        totalProcessed++
+      } catch (error) {
+        console.error(`❌ Erro ao recalcular métricas para conversa ${conv.conversation_id}:`, error)
+      }
+    }
+
+    console.log(`✅ Métricas recalculadas para ${totalProcessed} conversas`)
+    return totalProcessed
+  }
+
   static async getConversationsWithMetrics() {
     const result = await sql`
       SELECT 
@@ -347,13 +374,34 @@ export class DatabaseService {
       SELECT 
         m.*,
         rt.response_time_seconds,
-        rt.agent_response_time
+        rt.agent_response_time,
+        rt.customer_outside_hours,
+        rt.agent_outside_hours,
+        rt.business_hours_status
       FROM messages m
       LEFT JOIN response_times rt ON m.message_id = rt.customer_message_id
       WHERE m.conversation_id = ${conversationId}
       ORDER BY m.timestamp ASC
     `
     return result
+  }
+
+  static async getConversationMetrics(conversationId: string) {
+    const result = await sql`
+      SELECT 
+        COUNT(*) as total_messages,
+        COUNT(CASE WHEN sender_type = 'customer' THEN 1 END) as customer_messages,
+        COUNT(CASE WHEN sender_type = 'agent' THEN 1 END) as agent_messages,
+        AVG(rt.response_time_seconds) as avg_response_time,
+        COUNT(rt.id) as response_times_count,
+        COUNT(CASE WHEN rt.agent_outside_hours = true THEN 1 END) as responses_outside_hours,
+        MIN(rt.response_time_seconds) as min_response_time,
+        MAX(rt.response_time_seconds) as max_response_time
+      FROM messages m
+      LEFT JOIN response_times rt ON m.conversation_id = rt.conversation_id
+      WHERE m.conversation_id = ${conversationId}
+    `
+    return result[0]
   }
 
   static async getSiteCustomersWithMetrics() {

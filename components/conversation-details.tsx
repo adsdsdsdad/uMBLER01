@@ -30,6 +30,16 @@ interface ConversationData {
   conversation_id: string
   messages: Message[]
   response_times: ResponseTime[]
+  metrics?: {
+    total_messages: number
+    customer_messages: number
+    agent_messages: number
+    avg_response_time: number
+    response_times_count: number
+    responses_outside_hours: number
+    min_response_time: number
+    max_response_time: number
+  }
 }
 
 interface ConversationDetailsProps {
@@ -43,16 +53,21 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
   useEffect(() => {
     async function fetchConversation() {
       try {
-        const response = await fetch(`/api/conversations/${conversationId}/messages`)
-        const messages = await response.json()
+        const [messagesResponse, responseTimesResponse, metricsResponse] = await Promise.all([
+          fetch(`/api/conversations/${conversationId}/messages`),
+          fetch(`/api/conversations/${conversationId}/response-times`),
+          fetch(`/api/conversations/${conversationId}/metrics`)
+        ])
 
-        const responseTimesResponse = await fetch(`/api/conversations/${conversationId}/response-times`)
+        const messages = await messagesResponse.json()
         const response_times = await responseTimesResponse.json()
+        const metrics = await metricsResponse.json()
 
         setData({
           conversation_id: conversationId,
           messages,
           response_times,
+          metrics,
         })
       } catch (error) {
         console.error("Erro ao carregar conversa:", error)
@@ -88,10 +103,7 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
     )
   }
 
-  const avgResponseTime =
-    data.response_times.length > 0
-      ? data.response_times.reduce((sum, rt) => sum + (rt.response_time_seconds || 0), 0) / data.response_times.length
-      : 0
+  const avgResponseTime = data.metrics?.avg_response_time || 0
 
   return (
     <div className="space-y-6">
@@ -120,14 +132,14 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{data.messages.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{data.metrics?.total_messages || data.messages.length}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-blue-600 font-medium">
-                {data.messages.filter((m) => m.sender_type === "customer").length} do cliente
+                {data.metrics?.customer_messages || data.messages.filter((m) => m.sender_type === "customer").length} do cliente
               </span>
               {" • "}
               <span className="text-green-600 font-medium">
-                {data.messages.filter((m) => m.sender_type === "agent").length} do agente
+                {data.metrics?.agent_messages || data.messages.filter((m) => m.sender_type === "agent").length} do agente
               </span>
             </p>
           </CardContent>
@@ -142,18 +154,23 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{formatResponseTime(Math.round(avgResponseTime))}</div>
-            <Badge
-              className={`${getResponseTimeBadgeColor(avgResponseTime)} text-white font-medium`}
-              variant="secondary"
-            >
-              {avgResponseTime <= 30
-                ? "⚡ Excelente"
-                : avgResponseTime <= 120
-                  ? "✅ Bom"
-                  : avgResponseTime <= 300
-                    ? "⚠️ Regular"
-                    : "🔴 Lento"}
-            </Badge>
+            <div className="flex flex-col gap-2 mt-2">
+              <Badge
+                className={`${getResponseTimeBadgeColor(avgResponseTime)} text-white font-medium`}
+                variant="secondary"
+              >
+                {avgResponseTime <= 30
+                  ? "⚡ Excelente"
+                  : avgResponseTime <= 120
+                    ? "✅ Bom"
+                    : avgResponseTime <= 300
+                      ? "⚠️ Regular"
+                      : "🔴 Lento"}
+              </Badge>
+              <div className="text-xs text-muted-foreground">
+                {data.metrics?.response_times_count || 0} respostas medidas • Horário comercial: 8h-18h
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -165,7 +182,7 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{data.response_times.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{data.metrics?.response_times_count || data.response_times.length}</div>
             <p className="text-xs text-muted-foreground">Tempos de resposta calculados automaticamente</p>
           </CardContent>
         </Card>
@@ -179,7 +196,7 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {data.response_times.filter(rt => rt.agent_outside_hours).length}
+              {data.metrics?.responses_outside_hours || data.response_times.filter(rt => rt.agent_outside_hours).length}
             </div>
             <p className="text-xs text-muted-foreground">
               Respostas enviadas fora do horário de atendimento
@@ -231,7 +248,7 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
                         }`}
                       >
                         {message.sender_type === "customer" ? "👤 CLIENTE" : "🎧 ATENDENTE"}
-                        {message.sender_name && ` • ${message.sender_name}`}
+                        {message.sender_name && message.sender_name !== "Cliente" && ` • ${message.sender_name}`}
                       </Badge>
                     </div>
 

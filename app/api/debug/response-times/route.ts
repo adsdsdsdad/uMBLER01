@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server"
+
 export async function GET() {
   try {
     // Verificar se há dados nas tabelas
@@ -40,7 +42,7 @@ export async function GET() {
       LIMIT 10
     `
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       counts: {
         conversations: conversations[0].count,
@@ -53,9 +55,9 @@ export async function GET() {
     })
   } catch (error) {
     console.error("Erro no debug:", error)
-    return Response.json({
+    return NextResponse.json({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : "Erro desconhecido",
       timestamp: new Date().toISOString(),
     })
   }

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       const customer_phone = chatData.Contact?.Phone || null
       const customer_email = chatData.Contact?.Email || null
 
-      // Lógica simples e robusta para identificar o tipo de remetente
+      // Lógica melhorada para identificar o tipo de remetente
       const sourceValue = (lastMessage.Source || "").toLowerCase().trim()
       console.log("📊 Source original:", lastMessage.Source)
       console.log("📊 Source processado:", sourceValue)
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         sender_type = "agent"
       } else {
         // Fallback: se não tem Source, verificar se há dados de membro
-        const hasMemberData = lastMessage.Member?.Name || chatData.OrganizationMember?.Name
+        const hasMemberData = lastMessage.Member?.Name || lastMessage.Member?.DisplayName || lastMessage.Member?.FullName
         sender_type = hasMemberData ? "agent" : "customer"
         console.log("⚠️ Fallback usado - sender_type:", sender_type, "hasMemberData:", !!hasMemberData)
       }
@@ -169,7 +169,8 @@ export async function POST(request: NextRequest) {
             `⏱️ Tempo de resposta: ${responseTimeSeconds}s (${Math.floor(responseTimeSeconds / 60)}min ${responseTimeSeconds % 60}s)`,
           )
 
-          if (responseTimeSeconds > 0) {
+          // Só calcular se o tempo for positivo e razoável (menos de 30 dias)
+          if (responseTimeSeconds > 0 && responseTimeSeconds < 30 * 24 * 60 * 60) {
             // Verificar horário de atendimento
             const businessHoursStatus = getBusinessHoursStatus(customerMessageTime, agentResponseTime)
             
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
               `✅ Tempo de resposta salvo: ${Math.floor(responseTimeSeconds / 60)}min ${responseTimeSeconds % 60}s - ${businessHoursStatus.status}`,
             )
           } else {
-            console.log("⚠️ Tempo de resposta inválido (negativo ou zero)")
+            console.log(`⚠️ Tempo de resposta inválido: ${responseTimeSeconds}s`)
           }
         } else {
           console.log("ℹ️ Nenhuma mensagem de cliente encontrada para calcular tempo de resposta")
