@@ -3,6 +3,7 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 import { DatabaseService } from "@/lib/database"
+import { getBusinessHoursStatus } from "@/lib/utils"
 
 export async function POST(request: NextRequest) {
   try {
@@ -169,17 +170,25 @@ export async function POST(request: NextRequest) {
           )
 
           if (responseTimeSeconds > 0) {
+            // Verificar horário de atendimento
+            const businessHoursStatus = getBusinessHoursStatus(customerMessageTime, agentResponseTime)
+            
+            console.log(`🕐 Status horário: ${businessHoursStatus.status}`)
+            
             await DatabaseService.saveResponseTime({
               conversation_id,
-              customer_message_id: lastCustomerMessage.message_id,
+              customer_message_id: lastCustomerMessage.message_id || "",
               agent_message_id: message_id,
               response_time_seconds: responseTimeSeconds,
               customer_message_time: customerMessageTime,
               agent_response_time: agentResponseTime,
+              customer_outside_hours: businessHoursStatus.customerOutsideHours,
+              agent_outside_hours: businessHoursStatus.agentOutsideHours,
+              business_hours_status: businessHoursStatus.status,
             })
 
             console.log(
-              `✅ Tempo de resposta salvo: ${Math.floor(responseTimeSeconds / 60)}min ${responseTimeSeconds % 60}s`,
+              `✅ Tempo de resposta salvo: ${Math.floor(responseTimeSeconds / 60)}min ${responseTimeSeconds % 60}s - ${businessHoursStatus.status}`,
             )
           } else {
             console.log("⚠️ Tempo de resposta inválido (negativo ou zero)")

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   console.log("API de métricas chamada...")
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
     const { DatabaseService } = await import("@/lib/database")
     const conversations = await DatabaseService.getConversationsWithMetrics()
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       data: conversations.slice(0, 10),
       count: conversations.length,
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       },
     ]
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       data: mockData,
       count: mockData.length,

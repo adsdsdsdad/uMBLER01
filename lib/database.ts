@@ -35,6 +35,9 @@ export interface ResponseTime {
   customer_message_time: Date
   agent_response_time?: Date
   response_time_seconds?: number
+  customer_outside_hours?: boolean
+  agent_outside_hours?: boolean
+  business_hours_status?: string
   created_at: Date
 }
 
@@ -99,6 +102,9 @@ export class DatabaseService {
     response_time_seconds: number
     customer_message_time: Date
     agent_response_time: Date
+    customer_outside_hours?: boolean
+    agent_outside_hours?: boolean
+    business_hours_status?: string
   }) {
     const result = await sql`
       INSERT INTO response_times (
@@ -107,7 +113,10 @@ export class DatabaseService {
         agent_message_id, 
         customer_message_time, 
         agent_response_time, 
-        response_time_seconds
+        response_time_seconds,
+        customer_outside_hours,
+        agent_outside_hours,
+        business_hours_status
       )
       VALUES (
         ${data.conversation_id}, 
@@ -115,7 +124,10 @@ export class DatabaseService {
         ${data.agent_message_id}, 
         ${data.customer_message_time}, 
         ${data.agent_response_time}, 
-        ${data.response_time_seconds}
+        ${data.response_time_seconds},
+        ${data.customer_outside_hours || false},
+        ${data.agent_outside_hours || false},
+        ${data.business_hours_status || 'Dentro do horário'}
       )
       ON CONFLICT (customer_message_id, agent_message_id) DO NOTHING
       RETURNING *
@@ -206,18 +218,44 @@ export class DatabaseService {
 
       console.log(`⏱️ Calculando tempo para mensagem ${customerMessage.message_id}: ${responseTimeSeconds}s`)
 
+      // Verificar horário de atendimento
+      const { isOutsideBusinessHours, getBusinessHoursStatus } = await import('@/lib/utils')
+      const businessHoursStatus = getBusinessHoursStatus(customerTime, agentTime)
+
+      console.log(`🕐 Status horário: ${businessHoursStatus.status}`)
+
       try {
-        // Salvar tempo de resposta
+        // Salvar tempo de resposta com informações de horário
         const result = await sql`
-          INSERT INTO response_times (conversation_id, customer_message_id, agent_message_id, customer_message_time, agent_response_time, response_time_seconds)
-          VALUES (${conversationId}, ${customerMessage.message_id}, ${latestAgentMessage[0].message_id}, ${customerTime}, ${agentTime}, ${responseTimeSeconds})
+          INSERT INTO response_times (
+            conversation_id, 
+            customer_message_id, 
+            agent_message_id, 
+            customer_message_time, 
+            agent_response_time, 
+            response_time_seconds,
+            customer_outside_hours,
+            agent_outside_hours,
+            business_hours_status
+          )
+          VALUES (
+            ${conversationId}, 
+            ${customerMessage.message_id}, 
+            ${latestAgentMessage[0].message_id}, 
+            ${customerTime}, 
+            ${agentTime}, 
+            ${responseTimeSeconds},
+            ${businessHoursStatus.customerOutsideHours},
+            ${businessHoursStatus.agentOutsideHours},
+            ${businessHoursStatus.status}
+          )
           ON CONFLICT (customer_message_id, agent_message_id) DO NOTHING
           RETURNING *
         `
 
         if (result[0]) {
           responseTimesCalculated.push(result[0])
-          console.log(`✅ Tempo de resposta salvo: ${responseTimeSeconds}s`)
+          console.log(`✅ Tempo de resposta salvo: ${responseTimeSeconds}s - ${businessHoursStatus.status}`)
         }
       } catch (error) {
         console.error(`❌ Erro ao salvar tempo de resposta:`, error)
@@ -254,7 +292,9 @@ export class DatabaseService {
         COUNT(CASE WHEN m.sender_type = 'agent' THEN 1 END) as agent_messages,
         AVG(rt.response_time_seconds) as avg_response_time,
         MIN(rt.response_time_seconds) as min_response_time,
-        MAX(rt.response_time_seconds) as max_response_time
+        MAX(rt.response_time_seconds) as max_response_time,
+        COUNT(CASE WHEN rt.agent_outside_hours = true THEN 1 END) as responses_outside_hours,
+        COUNT(CASE WHEN rt.business_hours_status != 'Dentro do horário' THEN 1 END) as total_outside_hours
       FROM conversations c
       LEFT JOIN messages m ON c.conversation_id = m.conversation_id
       LEFT JOIN response_times rt ON c.conversation_id = rt.conversation_id

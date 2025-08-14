@@ -21,6 +21,8 @@ interface ConversationMetrics {
   updated_at: string
   tags: string[]
   is_site_customer?: boolean
+  responses_outside_hours?: number
+  total_outside_hours?: number
 }
 
 const TEAM_AGENTS = [
@@ -123,6 +125,7 @@ export default function AllConversationsPage() {
   const [selectedResponseTime, setSelectedResponseTime] = useState<string>("")
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("")
   const [selectedDate, setSelectedDate] = useState<string>("")
+  const [selectedBusinessHours, setSelectedBusinessHours] = useState<string>("")
   const [agents, setAgents] = useState<string[]>([])
 
   useEffect(() => {
@@ -139,7 +142,7 @@ export default function AllConversationsPage() {
               ...conversationsData.map((conv: ConversationMetrics) => conv.agent_name).filter(Boolean),
               ...TEAM_AGENTS,
             ]),
-          ].sort()
+          ].sort().filter((agent): agent is string => agent !== undefined)
           setAgents(uniqueAgents)
         }
       } catch (error) {
@@ -233,6 +236,18 @@ export default function AllConversationsPage() {
       })
     }
 
+    // Filtro por horário de atendimento
+    if (selectedBusinessHours) {
+      switch (selectedBusinessHours) {
+        case "outside_hours":
+          filtered = filtered.filter((conv) => (conv.responses_outside_hours || 0) > 0)
+          break
+        case "inside_hours":
+          filtered = filtered.filter((conv) => (conv.responses_outside_hours || 0) === 0)
+          break
+      }
+    }
+
     setFilteredConversations(filtered)
   }, [
     conversations,
@@ -243,6 +258,7 @@ export default function AllConversationsPage() {
     selectedResponseTime,
     selectedTimeRange,
     selectedDate,
+    selectedBusinessHours,
   ])
 
   const toggleTag = (tag: string) => {
@@ -524,6 +540,25 @@ export default function AllConversationsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
+                  Horário de Atendimento
+                </label>
+                <select
+                  value={selectedBusinessHours}
+                  onChange={(e) => setSelectedBusinessHours(e.target.value)}
+                  className="w-full px-4 py-2 border-2 rounded-lg text-sm bg-white focus:outline-none focus:ring-0"
+                  style={{
+                    borderColor: selectedBusinessHours ? "#04BFAD" : "#e5e7eb",
+                    color: "#3E403F",
+                  }}
+                >
+                  <option value="">Todos</option>
+                  <option value="inside_hours">Dentro do horário</option>
+                  <option value="outside_hours">Fora do horário</option>
+                </select>
+              </div>
+
               {/* Resultados */}
               <div className="space-y-2">
                 <label className="text-sm font-medium" style={{ color: "#3E403F" }}>
@@ -657,6 +692,12 @@ export default function AllConversationsPage() {
                       <User className="h-3 w-3" />
                       {conversation.agent_name || "Não atribuído"}
                     </span>
+                    {(conversation.responses_outside_hours || 0) > 0 && (
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-white text-xs font-medium" style={{ backgroundColor: "#FF6B6B" }}>
+                        <Clock className="h-3 w-3" />
+                        Fora do horário
+                      </span>
+                    )}
                   </div>
                   <span>{new Date(conversation.updated_at).toLocaleString("pt-BR")}</span>
                 </div>

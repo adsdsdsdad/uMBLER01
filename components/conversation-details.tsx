@@ -21,6 +21,9 @@ interface ResponseTime {
   customer_message_time: string
   agent_response_time?: string
   response_time_seconds?: number
+  customer_outside_hours?: boolean
+  agent_outside_hours?: boolean
+  business_hours_status?: string
 }
 
 interface ConversationData {
@@ -166,6 +169,23 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
             <p className="text-xs text-muted-foreground">Tempos de resposta calculados automaticamente</p>
           </CardContent>
         </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4 text-red-500" />
+              Fora do Horário
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {data.response_times.filter(rt => rt.agent_outside_hours).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Respostas enviadas fora do horário de atendimento
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Timeline de Mensagens */}
@@ -248,6 +268,20 @@ export function ConversationDetails({ conversationId }: ConversationDetailsProps
                           >
                             ⚡ Atendente respondeu em {formatResponseTime(message.response_time_seconds)}
                           </Badge>
+                          {/* Verificar se a resposta foi fora do horário */}
+                          {data.response_times.find(rt => 
+                            new Date(rt.customer_message_time).getTime() === new Date(message.timestamp).getTime()
+                          )?.agent_outside_hours && (
+                            <>
+                              <span className="mx-2">•</span>
+                              <Badge
+                                className="bg-red-500 hover:bg-red-600 text-white font-medium"
+                                variant="outline"
+                              >
+                                🕐 Fora do horário
+                              </Badge>
+                            </>
+                          )}
                         </>
                       )}
                     </div>

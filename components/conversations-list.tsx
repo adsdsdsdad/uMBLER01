@@ -134,7 +134,7 @@ export function ConversationsList() {
               ...conversationsData.map((conv: ConversationMetrics) => conv.agent_name).filter(Boolean),
               ...TEAM_AGENTS,
             ]),
-          ].sort()
+          ].sort().filter((agent): agent is string => agent !== undefined)
           setAgents(uniqueAgents)
         }
       } catch (error) {
